@@ -1,0 +1,149 @@
+#W2V_testing
+
+import re
+from gensim.models.phrases import Phrases, Phraser
+import pandas as pd
+from gensim.models import Word2Vec
+import numpy as np
+import sqlite3
+
+import spacy  # For preprocessing
+
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+from nltk.stem import WordNetLemmatizer
+
+
+Porter = PorterStemmer()
+Lemma = WordNetLemmatizer()
+
+conn = sqlite3.connect('data_science_scrap.sqlite3')
+#cur = conn.cursor()
+
+nlp = spacy.load('en_core_web_sm') 
+
+def cleaning(doc):
+    # Lemmatizes and removes stopwords
+    # doc needs to be a spacy Doc object
+    txt = [token.lemma_ for token in doc if not token.is_stop]
+    # Word2Vec uses context words to learn the vector representation of a target word,
+    # if a sentence is only one or two words long,
+    # the benefit for the training is very small
+    if len(txt) > 2:
+        return ' '.join(txt)
+
+
+
+#Create bigrams.
+
+df_clean = pd.read_sql_query('SELECT * FROM cleaned_TDS', conn)
+
+sent = [row.split() for row in df_clean['clean']]
+
+phrases = Phrases(sent, min_count=10, progress_per=10000)
+
+bigram = Phraser(phrases)
+
+#sentences = bigram[sent]
+
+
+
+queries = pd.read_csv('https://drive.google.com/uc?id=1ff4xFh4fl0-SvpYNeYQoNvDbzdiZfn-t')
+workshops = pd.read_csv('https://drive.google.com/uc?id=10MngpIZoAGgwAk_sxoORj7WPYs74nz5Y')
+
+
+#Intro to NLP is exactly the same as NLP. Drop Intro class.
+workshops.drop(workshops[workshops['workshop']== 'Intro to Natural Language Processing'].index,inplace = True)
+
+workshops.tags = workshops.tags.apply(lambda xs: xs.split(', '))
+
+
+
+#Add the workshop name and description into tags.
+
+stop_words = set(stopwords.words('english')) 
+
+row_count = workshops.shape[0]
+
+for i in range(row_count):
+    workshops.iloc[i,2].append(workshops.iloc[i,1])
+    descript = workshops.iloc[i,3]
+    descript_cleaning = re.sub("[^A-Za-z']+", ' ', descript).lower().split()
+
+
+    #Getting rid of stopwords and re-combine into sentences.
+    descript_non_stopwords = [word for word in descript_cleaning if word not in stop_words]
+
+    #Stemming and Lemmatization.
+    descript_stem = [Porter.stem(word) for word in descript_non_stopwords]
+    descript_lemma = [Lemma.lemmatize(word) for word in descript_non_stopwords]
+
+    #Combine all sentences
+    descript_processed = ' '.join(descript_non_stopwords)
+    descript_pro_stem = ' '.join(descript_stem)
+    descript_pro_lemma = ' '.join(descript_lemma)
+
+    workshops.iloc[i,2].append(descript_processed)
+    workshops.iloc[i,2].append(descript_pro_stem)
+    workshops.iloc[i,2].append(descript_pro_lemma)
+
+
+NLP_index = workshops.index[workshops['workshop'] == 'Natural Language Processing'].tolist()[0]
+
+workshops.loc[NLP_index, 'tags'].append('NLP')
+
+#Add sentiment phrases (for difficulty 0, 1, 2, and 3)
+
+#Load model
+model = Word2Vec.load("word2vec_TDS.model")
+
+def distance(query, tag_set):
+    if len(tag_set) == 0:
+        return np.inf
+    
+    #Stemming and lemmatizing the query.
+
+    lquery = query.lower().split()
+    lquery_stem = [Porter.stem(word) for word in lquery]
+    lquery_lemma = [Lemma.lemmatize(word) for word in lquery] 
+
+    lquery.extend(lquery_stem)
+    lquery.extend(lquery_lemma)
+
+    lquery = bigram[lquery]
+    lquery = list(set(lquery))
+  
+
+
+
+    #prospect = ' '.join(tag_set).lower().split()
+    prospect_set = [bigram[key.lower().split()] for key in tag_set]
+    prospect = []
+    for bi_set in prospect_set:
+        prospect.extend(bi_set)
+    #print(model.wv.wmdistance(lquery, prospect), prospect, lquery)
+
+    prospect = list(set(prospect))
+
+    #You can reward exact matches.
+    exact_matches = len(set(lquery).intersection(set(prospect)))
+    weight = 0
+    return model.wv.wmdistance(lquery, prospect) - weight*exact_matches
+
+def get_best_match_workshop(query):
+    return np.argmin([distance(query, ws) for ws in workshops.tags.values])
+    #[(distance(query, ws),k) for (ws,k) in iter(workshops.tags.values)]
+
+score = 0
+
+print('{0:<70}{1:<40}{2:<40}'.format('Query', 'Predicted Workshop', 'Actual Workshop'))
+for i in range(20):
+  query = queries.iloc[i].query
+  predict_idx = get_best_match_workshop(query)
+  predicted = workshops.iloc[predict_idx].workshop
+  actual = queries.iloc[i].workshop
+  if predicted == actual:
+      score += 1
+  print('{0:<70}{1:<40}{2:<40}'.format(query, predicted, actual))
+  
+print("Final score:", score)

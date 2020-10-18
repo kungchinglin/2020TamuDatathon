@@ -21,7 +21,7 @@ df_clean = pd.read_sql_query('SELECT * FROM cleaned_TDS', conn)
 
 sent = [row.split() for row in df_clean['clean']]
 
-phrases = Phrases(sent, min_count=70, progress_per=10000)
+phrases = Phrases(sent, min_count=10, progress_per=10000)
 
 bigram = Phraser(phrases)
 
@@ -57,7 +57,7 @@ print('Time to build vocab: {} mins'.format(round((time() - t) / 60, 2)))
 
 t = time()
 
-w2v_model.train(sentences, total_examples=w2v_model.corpus_count, epochs=30, report_delay=1)
+w2v_model.train(sentences, total_examples=w2v_model.corpus_count, epochs=60, report_delay=1)
 
 print('Time to train the model: {} mins'.format(round((time() - t) / 60, 2)))
 
