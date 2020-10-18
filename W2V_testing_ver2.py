@@ -10,27 +10,15 @@ import sqlite3
 import spacy  # For preprocessing
 
 from nltk.corpus import stopwords
-from nltk.stem import PorterStemmer
+from nltk.stem.snowball import SnowballStemmer
 from nltk.stem import WordNetLemmatizer
 
 
-Porter = PorterStemmer()
+Snow = SnowballStemmer(language = 'english')
 Lemma = WordNetLemmatizer()
 
 conn = sqlite3.connect('data_science_scrap.sqlite3')
 #cur = conn.cursor()
-
-nlp = spacy.load('en_core_web_sm') 
-
-def cleaning(doc):
-    # Lemmatizes and removes stopwords
-    # doc needs to be a spacy Doc object
-    txt = [token.lemma_ for token in doc if not token.is_stop]
-    # Word2Vec uses context words to learn the vector representation of a target word,
-    # if a sentence is only one or two words long,
-    # the benefit for the training is very small
-    if len(txt) > 2:
-        return ' '.join(txt)
 
 
 
@@ -75,7 +63,7 @@ for i in range(row_count):
     descript_non_stopwords = [word for word in descript_cleaning if word not in stop_words]
 
     #Stemming and Lemmatization.
-    descript_stem = [Porter.stem(word) for word in descript_non_stopwords]
+    descript_stem = [Snow.stem(word) for word in descript_non_stopwords]
     descript_lemma = [Lemma.lemmatize(word) for word in descript_non_stopwords]
 
     #Combine all sentences
@@ -94,8 +82,9 @@ workshops.loc[NLP_index, 'tags'].append('NLP')
 
 #Add sentiment phrases (for difficulty 0, 1, 2, and 3)
 
-#Load model
-model = Word2Vec.load("word2vec_TDS.model")
+
+
+
 
 def distance(query, tag_set):
     if len(tag_set) == 0:
@@ -104,7 +93,7 @@ def distance(query, tag_set):
     #Stemming and lemmatizing the query.
 
     lquery = query.lower().split()
-    lquery_stem = [Porter.stem(word) for word in lquery]
+    lquery_stem = [Snow.stem(word) for word in lquery]
     lquery_lemma = [Lemma.lemmatize(word) for word in lquery] 
 
     lquery.extend(lquery_stem)
@@ -134,7 +123,14 @@ def get_best_match_workshop(query):
     return np.argmin([distance(query, ws) for ws in workshops.tags.values])
     #[(distance(query, ws),k) for (ws,k) in iter(workshops.tags.values)]
 
+#Load model and start predicting.
+model = Word2Vec.load("word2vec_TDS.model")
+
 score = 0
+
+
+#To revise the program to accommodate user input, replace queries.iloc[i].query with input("Put in keywords: ")
+#and get rid of the "actual workshop" parts.
 
 print('{0:<70}{1:<40}{2:<40}'.format('Query', 'Predicted Workshop', 'Actual Workshop'))
 for i in range(20):
