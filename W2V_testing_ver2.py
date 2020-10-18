@@ -151,15 +151,21 @@ score = 0
 #To revise the program to accommodate user input, replace queries.iloc[i].query with input("Put in keywords: ")
 #and get rid of the "actual workshop" parts.
 
-print('{0:<70}{1:<40}{2:<40}'.format('Query', 'Predicted Workshop', 'Actual Workshop'))
+print('{0:<70}{1:<50}{2:<50}'.format('Query', 'Predicted Workshop', 'Actual Workshop'))
 for i in range(20):
-  query = queries.iloc[i].query
-  predict_idx = get_best_mult_match_workshop(query)
-  for k in range(mult):
-    predicted = workshops.iloc[predict_idx[k]].workshop
-    actual = queries.iloc[i].workshop
-    if predicted == actual:
-        score += 1
-    print('{0:<70}{1:<40}{2:<40}'.format(query, predicted, actual))
+    query = queries.iloc[i].query
+    predict_idx = get_best_mult_match_workshop(query)
+    for k in range(mult):
+        flag = 0
+        predicted = workshops.iloc[predict_idx[k]].workshop
+        actual = queries.iloc[i].workshop
+        if predicted == actual:
+            score += 1
+            print('{0:<70}{1:<50}{2:<50}'.format(query, predicted, actual))
+            flag = 1
+            break
+    if flag == 0:
+        print('{0:<70}{1:<50}{2:<50}'.format(query, predicted, actual))
+    
   
 print("Final score:", score)
