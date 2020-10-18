@@ -136,7 +136,7 @@ def get_best_match_workshop(query):
     return np.argmin([distance(query, ws) for ws in workshops.tags.values])
     #[(distance(query, ws),k) for (ws,k) in iter(workshops.tags.values)]
 
-mult = 3
+mult = 5
 
 def get_best_mult_match_workshop(query):
     a = [distance(query, ws) for ws in workshops.tags.values]
@@ -152,8 +152,8 @@ score = 0
 #and get rid of the "actual workshop" parts.
 
 print('{0:<70}{1:<50}{2:<50}'.format('Query', 'Predicted Workshop', 'Actual Workshop'))
-for i in range(20):
-    query = queries.iloc[i].query
+for i in range(3):
+    query = input("Please input keywords: ")
     predict_idx = get_best_mult_match_workshop(query)
     for k in range(mult):
         flag = 0
@@ -163,9 +163,8 @@ for i in range(20):
             score += 1
             
             flag = 1
+            break
         print('{0:<70}{1:<50}{2:<50}'.format(query, predicted, actual))
-    #if flag == 0:
-    #    print('{0:<70}{1:<50}{2:<50}'.format(query, predicted, actual))
     
   
 print("Final score:", score)
