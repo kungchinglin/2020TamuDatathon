@@ -5,10 +5,16 @@ from time import time  # To time our operations
 from collections import defaultdict  # For word frequency
 import sqlite3
 
+from nltk.stem.snowball import SnowballStemmer
+
 import spacy  # For preprocessing
+
 
 import logging  # Setting up the loggings to monitor gensim
 logging.basicConfig(format="%(levelname)s - %(asctime)s: %(message)s", datefmt= '%H:%M:%S', level=logging.INFO)
+
+Snow = SnowballStemmer(language = 'english')
+
 
 conn = sqlite3.connect('data_science_scrap.sqlite3')
 #cur = conn.cursor()
@@ -36,9 +42,17 @@ t = time()
 
 txt = [cleaning(doc) for doc in nlp.pipe(brief_cleaning, batch_size=5000, n_threads=-1)]
 
+txt_stem = []
+
+for row in df['sentence']:
+    cleaned_sent = re.sub("[^A-Za-z']+", ' ', str(row)).lower()
+    txt_stem.append([ Snow.stem(word) for word in cleaned_sent])
+
+
+
 print('Time to clean up everything: {} mins'.format(round((time() - t) / 60, 2)))
 
-df_clean = pd.DataFrame({'clean': txt})
+df_clean = pd.DataFrame({'clean': txt.extend(txt_stem)})
 df_clean = df_clean.dropna().drop_duplicates()
 
 df_clean.to_sql('cleaned_TDS', conn, if_exists='replace', index=False)

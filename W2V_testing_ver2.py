@@ -28,7 +28,7 @@ df_clean = pd.read_sql_query('SELECT * FROM cleaned_TDS', conn)
 
 sent = [row.split() for row in df_clean['clean']]
 
-phrases = Phrases(sent, min_count=10, progress_per=10000)
+phrases = Phrases(sent, min_count=15, progress_per=10000)
 
 bigram = Phraser(phrases)
 
@@ -44,6 +44,14 @@ workshops = pd.read_csv('https://drive.google.com/uc?id=10MngpIZoAGgwAk_sxoORj7W
 workshops.drop(workshops[workshops['workshop']== 'Intro to Natural Language Processing'].index,inplace = True)
 
 workshops.tags = workshops.tags.apply(lambda xs: xs.split(', '))
+
+
+
+#Add sentiment phrases (for difficulty 0 and 1)
+
+beginner_dict = ['begin','beginner','basic','start', 'new', 'introduction', 'introduce']
+beginner_stem = [Snow.stem(word) for word in beginner_dict]
+beginner_lemm = [Lemma.lemmatize(word) for word in beginner_dict]
 
 
 
@@ -75,12 +83,17 @@ for i in range(row_count):
     workshops.iloc[i,2].append(descript_pro_stem)
     workshops.iloc[i,2].append(descript_pro_lemma)
 
+    if workshops.iloc[i,5] <= 1:
+        workshops.iloc[i,2].extend(beginner_dict)
+        workshops.iloc[i,2].extend(beginner_stem)
+        workshops.iloc[i,2].extend(beginner_lemm)
+
 
 NLP_index = workshops.index[workshops['workshop'] == 'Natural Language Processing'].tolist()[0]
 
 workshops.loc[NLP_index, 'tags'].append('NLP')
 
-#Add sentiment phrases (for difficulty 0, 1, 2, and 3)
+
 
 
 
@@ -123,8 +136,14 @@ def get_best_match_workshop(query):
     return np.argmin([distance(query, ws) for ws in workshops.tags.values])
     #[(distance(query, ws),k) for (ws,k) in iter(workshops.tags.values)]
 
+mult = 5
+
+def get_best_mult_match_workshop(query):
+    a = [distance(query, ws) for ws in workshops.tags.values]
+    return sorted(range(len(a)), key=lambda i: a[i])[:mult]
+
 #Load model and start predicting.
-model = Word2Vec.load("word2vec_TDS.model")
+model = Word2Vec.load("word2vec_TDS_14.model")
 
 score = 0
 
@@ -135,11 +154,12 @@ score = 0
 print('{0:<70}{1:<40}{2:<40}'.format('Query', 'Predicted Workshop', 'Actual Workshop'))
 for i in range(20):
   query = queries.iloc[i].query
-  predict_idx = get_best_match_workshop(query)
-  predicted = workshops.iloc[predict_idx].workshop
-  actual = queries.iloc[i].workshop
-  if predicted == actual:
-      score += 1
-  print('{0:<70}{1:<40}{2:<40}'.format(query, predicted, actual))
+  predict_idx = get_best_mult_match_workshop(query)
+  for k in range(mult):
+    predicted = workshops.iloc[predict_idx[k]].workshop
+    actual = queries.iloc[i].workshop
+    if predicted == actual:
+        score += 1
+    print('{0:<70}{1:<40}{2:<40}'.format(query, predicted, actual))
   
 print("Final score:", score)

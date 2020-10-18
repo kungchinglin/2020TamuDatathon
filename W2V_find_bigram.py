@@ -21,7 +21,7 @@ df_clean = pd.read_sql_query('SELECT * FROM cleaned_TDS', conn)
 
 sent = [row.split() for row in df_clean['clean']]
 
-phrases = Phrases(sent, min_count=10, progress_per=10000)
+phrases = Phrases(sent, min_count=15, progress_per=10000)
 
 bigram = Phraser(phrases)
 
@@ -37,7 +37,7 @@ from gensim.models import Word2Vec
 cores = multiprocessing.cpu_count()
 
 w2v_model = Word2Vec(min_count=20,
-                     window=2,
+                     window=4,
                      size=300,
                      sample=6e-5, 
                      alpha=0.03, 
