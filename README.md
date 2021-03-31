@@ -36,7 +36,7 @@ We trained the word2vec model with *gensim* on the cleaned data for 60 epochs wi
 
 ### Search Engine
 
-We define each workshop with a series of tags. The series of tags is then combined into a single sentence. Then, by calculating the embedded distance between the query and the tags of each workshop, we return the workshop with the shortest distance from the query.
+We define each workshop with a series of tags. Then, by calculating the word mover distance (WMD) between the query and the tags of each workshop, we return the workshop with the shortest distance from the query.
 
 ## Results
 
